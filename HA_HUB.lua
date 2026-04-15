@@ -109,9 +109,9 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Text = isOpen and "HA" or "Open"
 end)
 
--- 6. Logic Tìm Server Ít Người (Đã bọc chống lag)
+-- 6. Logic Tìm Server 1-2 Người 
 HopBtn.MouseButton1Click:Connect(function()
-    if HopBtn.Text:find("Đang quét") then return end -- Tránh bấm nhiều lần
+    if HopBtn.Text:find("Đang quét") then return end 
     HopBtn.Text = "🔍 Đang quét server..."
     
     task.spawn(function()
@@ -120,7 +120,7 @@ HopBtn.MouseButton1Click:Connect(function()
         local targetFound = false
         local cursor = ""
         local attempts = 0
-        local maxAttempts = 10 -- Tăng số trang quét lên 10
+        local maxAttempts = 20 -- Tăng lên 20 trang để quét cho sâu
         
         while not targetFound and attempts < maxAttempts do
             local url = "https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100"
@@ -133,19 +133,10 @@ HopBtn.MouseButton1Click:Connect(function()
             end)
 
             if success and result and result.data then
-                -- Quét ưu tiên server 1 người trước
+                -- Lọc gắt: Chỉ lấy server có đúng 1 hoặc 2 người
                 for _, server in pairs(result.data) do
-                    if server.playing == 1 and server.id ~= JobID then
-                        HopBtn.Text = "✅ Đang vào server 1 người!"
-                        TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
-                        return
-                    end
-                end
-                
-                -- Nếu không có, quét server 2 người
-                for _, server in pairs(result.data) do
-                    if server.playing == 2 and server.id ~= JobID then
-                        HopBtn.Text = "✅ Đang vào server 2 người!"
+                    if server.playing >= 1 and server.playing <= 2 and server.id ~= JobID then
+                        HopBtn.Text = "✅ Đang vào server " .. server.playing .. " người!"
                         TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
                         return
                     end
@@ -165,7 +156,7 @@ HopBtn.MouseButton1Click:Connect(function()
         end
 
         if not targetFound then
-            HopBtn.Text = "❌ Hết server trống!"
+            HopBtn.Text = "❌ Hết server 1-2 người!"
             task.wait(2)
             HopBtn.Text = "🌐 Tìm Server 1-2 Người"
         end
