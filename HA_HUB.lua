@@ -74,7 +74,7 @@ local function CreateButton(name, text, color, order)
 end
 
 local BoostBtn = CreateButton("BoostBtn", "🚀 Tối Ưu FPS & Fix Lag", Color3.fromRGB(45, 45, 45), 1)
-local HopBtn = CreateButton("HopBtn", "🌐 Tìm Server 1-2 Người", Color3.fromRGB(45, 45, 45), 2)
+local HopBtn = CreateButton("HopBtn", "🌐 Tìm Server 3-5 Người", Color3.fromRGB(45, 45, 45), 2)
 
 -- 4. Hiệu ứng Khởi chạy
 local function StartupAnimation()
@@ -106,7 +106,7 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Text = isOpen and "HA" or "Open"
 end)
 
--- 6. Logic Tìm Server (Chiến thuật Gom & Random né 773)
+-- 6. Logic Tìm Server (Đôn lên 3-5 người để né 773 dứt điểm)
 HopBtn.MouseButton1Click:Connect(function()
     if HopBtn.Text:find("Đang quét") then return end 
     HopBtn.Text = "🔍 Đang thu thập server..."
@@ -116,10 +116,9 @@ HopBtn.MouseButton1Click:Connect(function()
         local JobID = game.JobId
         local cursor = ""
         local attempts = 0
-        local maxAttempts = 15 -- Quét 15 trang để gom đủ lượng server cần thiết
-        local validServers = {} -- Danh sách chứa các server 1-2 người
+        local maxAttempts = 15 
+        local validServers = {} 
         
-        -- Bước 1: Quét và thu thập
         while attempts < maxAttempts do
             local url = "https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100"
             if cursor ~= "" then url = url .. "&cursor=" .. cursor end
@@ -130,8 +129,8 @@ HopBtn.MouseButton1Click:Connect(function()
 
             if success and result and result.data then
                 for _, server in pairs(result.data) do
-                    -- Chỉ lấy server 1-2 người và ping hợp lệ (loại server sập)
-                    if server.playing >= 1 and server.playing <= 2 and server.id ~= JobID and server.ping ~= nil then
+                    -- Chỉ lấy server từ 3 đến 5 người, bỏ qua mốc 1-2 người dễ lỗi
+                    if server.playing >= 3 and server.playing <= 5 and server.id ~= JobID and server.ping ~= nil then
                         table.insert(validServers, {id = server.id, playing = server.playing})
                     end
                 end
@@ -149,14 +148,12 @@ HopBtn.MouseButton1Click:Connect(function()
             task.wait(0.1)
         end
 
-        -- Bước 2: Chọn ngẫu nhiên để né "server ma" đầu danh sách
         if #validServers > 0 then
             HopBtn.Text = "🎲 Đang lọc random..."
             task.wait(0.5)
             
-            -- Ưu tiên bốc các server từ giữa hoặc cuối danh sách thu được
-            local startIndex = math.max(1, math.floor(#validServers / 3)) 
-            local randomIndex = math.random(startIndex, #validServers)
+            -- Lấy ngẫu nhiên để tránh các server kẹt ở đầu danh sách
+            local randomIndex = math.random(1, #validServers)
             local chosenServer = validServers[randomIndex]
             
             HopBtn.Text = "✅ Vào server " .. chosenServer.playing .. " người!"
@@ -164,7 +161,7 @@ HopBtn.MouseButton1Click:Connect(function()
         else
             HopBtn.Text = "❌ Không tìm thấy!"
             task.wait(2)
-            HopBtn.Text = "🌐 Tìm Server 1-2 Người"
+            HopBtn.Text = "🌐 Tìm Server 3-5 Người"
         end
     end)
 end)
