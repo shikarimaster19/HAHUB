@@ -1,76 +1,66 @@
--- Tạo ScreenGui cơ bản cho HA Hub
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local BoostButton = Instance.new("TextButton")
+-- Cập nhật logic tìm Server cực ít người cho HA Hub
+HopBtn.MouseButton1Click:Connect(function()
+    HopBtn.Text = "🔍 Đang quét server..."
+    local PlaceID = game.PlaceId
+    local JobID = game.JobId
+    local targetFound = false
+    
+    -- Hàm quét sâu để tìm server 1-2 người
+    local function ScanForSmallServer()
+        -- Sử dụng con trỏ (cursor) để quét qua nhiều trang danh sách server nếu cần
+        local cursor = ""
+        local attempts = 0
+        local maxAttempts = 5 -- Số trang tối đa sẽ quét để tránh treo script
 
--- Bảo vệ GUI (Nếu chạy qua executor, thường dùng CoreGui để không bị game xóa)
-local success, err = pcall(function()
-    ScreenGui.Parent = game:GetService("CoreGui")
-end)
-if not success then
-    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-end
+        while not targetFound and attempts < maxAttempts do
+            local url = "https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100&cursor=" .. cursor
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
 
-ScreenGui.Name = "HA_Hub"
+            if success and result and result.data then
+                -- Ưu tiên 1: Tìm server có đúng 1 người
+                for _, server in pairs(result.data) do
+                    if server.playing == 1 and server.id ~= JobID then
+                        HopBtn.Text = "✅ Đã thấy server 1 người!"
+                        targetFound = true
+                        TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
+                        return
+                    end
+                end
 
--- Tùy chỉnh Khung chính (Frame)
-Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Frame.Position = UDim2.new(0.5, -100, 0.2, 0)
-Frame.Size = UDim2.new(0, 200, 0, 120)
-Frame.Active = true
-Frame.Draggable = true -- Cho phép bạn kéo thả menu trên màn hình
+                -- Ưu tiên 2: Nếu không có 1 người, tìm server có 2 người
+                if not targetFound then
+                    for _, server in pairs(result.data) do
+                        if server.playing == 2 and server.id ~= JobID then
+                            HopBtn.Text = "✅ Đã thấy server 2 người!"
+                            targetFound = true
+                            TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
+                            return
+                        end
+                    end
+                end
 
--- Tùy chỉnh Tiêu đề
-Title.Parent = Frame
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Size = UDim2.new(1, 0, 0.3, 0)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "HA Hub"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
+                -- Chuyển sang trang tiếp theo nếu chưa tìm thấy
+                if result.nextPageCursor then
+                    cursor = result.nextPageCursor
+                    attempts = attempts + 1
+                    HopBtn.Text = "🔍 Đang quét trang " .. (attempts + 1) .. "..."
+                else
+                    break
+                end
+            else
+                break
+            end
+            task.wait(0.1) -- Đợi một chút để tránh spam API
+        end
 
--- Tùy chỉnh Nút bấm Boost FPS
-BoostButton.Parent = Frame
-BoostButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-BoostButton.Position = UDim2.new(0.1, 0, 0.5, 0)
-BoostButton.Size = UDim2.new(0.8, 0, 0.35, 0)
-BoostButton.Font = Enum.Font.GothamSemibold
-BoostButton.Text = "Tối Ưu Hóa (Boost FPS)"
-BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-BoostButton.TextSize = 14
-
--- Hàm xử lý Fix Lag & Boost FPS
-local function OptimizeGraphics()
-    BoostButton.Text = "Đang xử lý..."
-    task.wait(0.1)
-
-    -- 1. Tắt bóng đổ toàn cầu và sương mù
-    game.Lighting.GlobalShadows = false
-    game.Lighting.FogEnd = 9e9
-    game.Lighting.ShadowSoftness = 0
-
-    -- 2. Duyệt qua tất cả các vật thể trong Workspace để xóa texture và giảm chất lượng bề mặt
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and not v:IsA("MeshPart") then
-            -- Chuyển chất liệu thành SmoothPlastic để GPU đỡ phải render chi tiết
-            v.Material = Enum.Material.SmoothPlastic
-            v.Reflectance = 0
-        elseif v:IsA("Decal") or v:IsA("Texture") then
-            -- Ẩn các hình dán và texture
-            v.Transparency = 1
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            -- Tắt các hiệu ứng hạt và vệt sáng gây lag
-            v.Enabled = false
+        if not targetFound then
+            HopBtn.Text = "❌ Không tìm thấy server 1-2 người"
+            task.wait(2)
+            HopBtn.Text = "🌐 Tìm Server Ít Người"
         end
     end
 
-    -- Đổi màu nút để thông báo hoàn tất
-    BoostButton.Text = "Đã Tối Ưu!"
-    BoostButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-end
-
--- Gắn sự kiện click cho nút bấm
-BoostButton.MouseButton1Click:Connect(OptimizeGraphics)
-
+    ScanForSmallServer()
+end)
