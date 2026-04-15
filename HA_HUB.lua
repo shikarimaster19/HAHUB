@@ -10,7 +10,7 @@ if not ScreenGui.Parent then
     ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui") 
 end
 
--- 2. Nút Thu Gọn (Toggle Button)
+-- 2. Nút Thu Gọn
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Parent = ScreenGui
@@ -26,7 +26,7 @@ local UICorner_Toggle = Instance.new("UICorner")
 UICorner_Toggle.CornerRadius = UDim.new(0, 10)
 UICorner_Toggle.Parent = ToggleButton
 
--- 3. Khung Chính (Main Frame)
+-- 3. Khung Chính
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -40,7 +40,6 @@ local UICorner_Main = Instance.new("UICorner")
 UICorner_Main.CornerRadius = UDim.new(0, 12)
 UICorner_Main.Parent = MainFrame
 
--- Tiêu đề
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 40)
@@ -50,14 +49,12 @@ Title.Text = "HA HUB - PREMIUM"
 Title.TextColor3 = Color3.fromRGB(0, 170, 255)
 Title.TextSize = 16
 
--- Layout sắp xếp nút
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = MainFrame
 UIListLayout.Padding = UDim.new(0, 10)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Hàm tạo nút nhanh
 local function CreateButton(name, text, color, order)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -109,61 +106,70 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Text = isOpen and "HA" or "Open"
 end)
 
--- 6. Logic Tìm Server 1-2 Người 
+-- 6. Logic Tìm Server (Chiến thuật Gom & Random né 773)
 HopBtn.MouseButton1Click:Connect(function()
     if HopBtn.Text:find("Đang quét") then return end 
-    HopBtn.Text = "🔍 Đang quét server..."
+    HopBtn.Text = "🔍 Đang thu thập server..."
     
     task.spawn(function()
         local PlaceID = game.PlaceId
         local JobID = game.JobId
-        local targetFound = false
         local cursor = ""
         local attempts = 0
-        local maxAttempts = 20 -- Tăng lên 20 trang để quét cho sâu
+        local maxAttempts = 15 -- Quét 15 trang để gom đủ lượng server cần thiết
+        local validServers = {} -- Danh sách chứa các server 1-2 người
         
-        while not targetFound and attempts < maxAttempts do
+        -- Bước 1: Quét và thu thập
+        while attempts < maxAttempts do
             local url = "https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100"
-            if cursor ~= "" then
-                url = url .. "&cursor=" .. cursor
-            end
+            if cursor ~= "" then url = url .. "&cursor=" .. cursor end
             
             local success, result = pcall(function()
                 return HttpService:JSONDecode(game:HttpGet(url))
             end)
 
             if success and result and result.data then
-                -- Lọc gắt: Chỉ lấy server có đúng 1 hoặc 2 người
                 for _, server in pairs(result.data) do
-                    if server.playing >= 1 and server.playing <= 2 and server.id ~= JobID then
-                        HopBtn.Text = "✅ Đang vào server " .. server.playing .. " người!"
-                        TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
-                        return
+                    -- Chỉ lấy server 1-2 người và ping hợp lệ (loại server sập)
+                    if server.playing >= 1 and server.playing <= 2 and server.id ~= JobID and server.ping ~= nil then
+                        table.insert(validServers, {id = server.id, playing = server.playing})
                     end
                 end
 
                 if result.nextPageCursor then
                     cursor = result.nextPageCursor
                     attempts = attempts + 1
-                    HopBtn.Text = "🔍 Quét trang " .. attempts .. "..."
+                    HopBtn.Text = "🔍 Đang gom... (" .. #validServers .. " server)"
                 else
                     break
                 end
             else
                 break
             end
-            task.wait(0.2)
+            task.wait(0.1)
         end
 
-        if not targetFound then
-            HopBtn.Text = "❌ Hết server 1-2 người!"
+        -- Bước 2: Chọn ngẫu nhiên để né "server ma" đầu danh sách
+        if #validServers > 0 then
+            HopBtn.Text = "🎲 Đang lọc random..."
+            task.wait(0.5)
+            
+            -- Ưu tiên bốc các server từ giữa hoặc cuối danh sách thu được
+            local startIndex = math.max(1, math.floor(#validServers / 3)) 
+            local randomIndex = math.random(startIndex, #validServers)
+            local chosenServer = validServers[randomIndex]
+            
+            HopBtn.Text = "✅ Vào server " .. chosenServer.playing .. " người!"
+            TeleportService:TeleportToPlaceInstance(PlaceID, chosenServer.id, game.Players.LocalPlayer)
+        else
+            HopBtn.Text = "❌ Không tìm thấy!"
             task.wait(2)
             HopBtn.Text = "🌐 Tìm Server 1-2 Người"
         end
     end)
 end)
 
--- 7. Logic Tối Ưu Đồ Họa (Fix Lag)
+-- 7. Logic Tối Ưu Đồ Họa
 BoostBtn.MouseButton1Click:Connect(function()
     BoostBtn.Text = "Đang dọn dẹp..."
     task.wait(0.1)
@@ -183,5 +189,4 @@ BoostBtn.MouseButton1Click:Connect(function()
     BoostBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)
 end)
 
--- Bắt đầu hiệu ứng
 task.spawn(StartupAnimation)
