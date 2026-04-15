@@ -4,7 +4,7 @@ local TeleportService = game:GetService("TeleportService")
 
 -- 1. Khởi tạo UI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HA_Hub_Anti773"
+ScreenGui.Name = "HA_Hub_Stable"
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui") end
 
@@ -39,7 +39,7 @@ Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 45)
 Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "HA HUB - ANTI 773"
+Title.Text = "HA HUB - STABLE"
 Title.TextColor3 = Color3.fromRGB(0, 255, 150)
 Title.TextSize = 16
 
@@ -56,7 +56,7 @@ local function CreateButton(text, color, order)
     btn.Font = Enum.Font.GothamSemibold
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
+    btn.TextSize = 13
     btn.LayoutOrder = order
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
@@ -65,7 +65,7 @@ local function CreateButton(text, color, order)
 end
 
 local BoostBtn = CreateButton("🚀 Tối Ưu Cực Hạn (Low Gfx)", Color3.fromRGB(50, 50, 50), 1)
-local HopBtn = CreateButton("🛡️ Săn Server 1 Người (Sạch)", Color3.fromRGB(0, 120, 255), 2)
+local HopBtn = CreateButton("🌐 Tìm Server Vắng (10-15 Ng)", Color3.fromRGB(0, 120, 255), 2)
 
 -- 4. Animation Khởi chạy
 MainFrame.Visible = true
@@ -80,17 +80,15 @@ ToggleButton.MouseButton1Click:Connect(function()
     TweenService:Create(MainFrame, TweenInfo.new(0.4), {Size = targetSize}):Play()
 end)
 
--- 6. LOGIC SĂN SERVER 1 NGƯỜI CHỐNG 773
+-- 6. LOGIC TÌM SERVER 10-15 NGƯỜI (CHẮC CHẮN SỐNG)
 HopBtn.MouseButton1Click:Connect(function()
     if HopBtn.Text:find("Đang") then return end
     
     task.spawn(function()
         local PlaceID = game.PlaceId
         local JobID = game.JobId
-        local list = {}
         local cursor = ""
         local page = 0
-        local skipCount = 0 -- Biến để bỏ qua server ma đầu danh sách
         
         while true do
             page = page + 1
@@ -105,41 +103,26 @@ HopBtn.MouseButton1Click:Connect(function()
 
             if success and result and result.data then
                 for _, server in pairs(result.data) do
-                    if server.playing == 1 and server.id ~= JobID then
-                        skipCount = skipCount + 1
-                        
-                        -- CHIẾN THUẬT: Bỏ qua 10 server đầu tiên tìm thấy để né server ma
-                        if skipCount > 10 then
-                            table.insert(list, server.id)
-                        end
-                    end
-                    
-                    -- Nếu đã gom đủ 3 server "sạch", chọn ngẫu nhiên 1 cái để vào
-                    if #list >= 3 then
-                        local finalId = list[math.random(1, #list)]
-                        HopBtn.Text = "✅ Đã né server ma! Vào..."
-                        TeleportService:TeleportToPlaceInstance(PlaceID, finalId, game.Players.LocalPlayer)
+                    -- Tìm server từ 10 đến 15 người 
+                    if server.playing >= 10 and server.playing <= 15 and server.id ~= JobID then
+                        HopBtn.Text = "✅ Thấy server " .. server.playing .. " ng! Đang vào..."
+                        TeleportService:TeleportToPlaceInstance(PlaceID, server.id, game.Players.LocalPlayer)
                         return
                     end
                 end
                 
                 cursor = result.nextPageCursor
                 if not cursor then 
-                    -- Nếu quét hết mà vẫn chưa đủ 3 server sạch, thì lấy đại cái nào tìm được
-                    if #list > 0 then
-                        TeleportService:TeleportToPlaceInstance(PlaceID, list[1], game.Players.LocalPlayer)
-                        return
-                    end
-                    cursor = "" -- Reset để quét lại từ đầu
+                    HopBtn.Text = "🔄 Hết list, quét lại..."
+                    cursor = ""
                     page = 0
-                    skipCount = 0
                     task.wait(1)
                 end
             else
-                HopBtn.Text = "⏳ API nghẽn, đợi tí..."
-                task.wait(3)
+                HopBtn.Text = "⏳ Đang đợi API..."
+                task.wait(2)
             end
-            task.wait(0.5) -- Tốc độ quét an toàn
+            task.wait(0.2) -- Tốc độ quét nhanh vì mốc này cực dễ kiếm
         end
     end)
 end)
