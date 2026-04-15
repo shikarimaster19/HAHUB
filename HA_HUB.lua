@@ -106,84 +106,73 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Text = isOpen and "HA" or "Open"
 end)
 
--- 6. Logic Tìm Server (Đôn lên 3-5 người để né 773 dứt điểm)
+-- 6. Logic Tìm Server (Bản nâng cấp chống chặn API, quét sâu 50 trang)
 HopBtn.MouseButton1Click:Connect(function()
-    if HopBtn.Text:find("Đang quét") then return end 
-    HopBtn.Text = "🔍 Đang thu thập server..."
+    if HopBtn.Text:find("Đang") or HopBtn.Text:find("Quét") then return end 
+    HopBtn.Text = "🔍 Khởi động máy quét..."
     
     task.spawn(function()
         local PlaceID = game.PlaceId
         local JobID = game.JobId
         local cursor = ""
         local attempts = 0
-        local maxAttempts = 15 
+        local maxAttempts = 50 -- Quét siêu sâu tối đa 50 trang
         local validServers = {} 
         
         while attempts < maxAttempts do
             local url = "https://games.roblox.com/v1/games/" .. PlaceID .. "/servers/Public?sortOrder=Asc&limit=100"
             if cursor ~= "" then url = url .. "&cursor=" .. cursor end
             
+            -- Gọi API an toàn
             local success, result = pcall(function()
                 return HttpService:JSONDecode(game:HttpGet(url))
             end)
 
             if success and result and result.data then
                 for _, server in pairs(result.data) do
-                    -- Chỉ lấy server từ 3 đến 5 người, bỏ qua mốc 1-2 người dễ lỗi
-                    if server.playing >= 3 and server.playing <= 5 and server.id ~= JobID and server.ping ~= nil then
+                    -- Mở rộng mốc 3 đến 10 người, loại bỏ server lỗi
+                    if server.playing >= 3 and server.playing <= 10 and server.id ~= JobID then
                         table.insert(validServers, {id = server.id, playing = server.playing})
                     end
+                end
+
+                -- Nếu gom được 5 server vắng thì chốt luôn, khỏi quét thêm cho mệt máy
+                if #validServers >= 5 then
+                    break
                 end
 
                 if result.nextPageCursor then
                     cursor = result.nextPageCursor
                     attempts = attempts + 1
-                    HopBtn.Text = "🔍 Đang gom... (" .. #validServers .. " server)"
+                    HopBtn.Text = "🔍 Đang đào trang " .. attempts .. "..."
                 else
-                    break
+                    break -- Hết danh sách
                 end
             else
+                HopBtn.Text = "⚠️ Lỗi API/Mạng lag"
+                task.wait(2)
                 break
             end
-            task.wait(0.1)
+            
+            task.wait(0.5) -- THỜI GIAN NGHỈ CỰC KỲ QUAN TRỌNG ĐỂ KHÔNG BỊ ROBLOX CHẶN
         end
 
         if #validServers > 0 then
-            HopBtn.Text = "🎲 Đang lọc random..."
+            HopBtn.Text = "🎲 Đang kết nối..."
             task.wait(0.5)
             
-            -- Lấy ngẫu nhiên để tránh các server kẹt ở đầu danh sách
             local randomIndex = math.random(1, #validServers)
             local chosenServer = validServers[randomIndex]
             
-            HopBtn.Text = "✅ Vào server " .. chosenServer.playing .. " người!"
+            HopBtn.Text = "✅ Đang vào server " .. chosenServer.playing .. " người!"
             TeleportService:TeleportToPlaceInstance(PlaceID, chosenServer.id, game.Players.LocalPlayer)
         else
-            HopBtn.Text = "❌ Không tìm thấy!"
-            task.wait(2)
-            HopBtn.Text = "🌐 Tìm Server 3-5 Người"
+            if not HopBtn.Text:find("⚠️") then
+                HopBtn.Text = "❌ Vẫn không tìm thấy!"
+                task.wait(2)
+            end
+            HopBtn.Text = "🌐 Tìm Server 3-10 Người"
         end
     end)
 end)
-
--- 7. Logic Tối Ưu Đồ Họa
-BoostBtn.MouseButton1Click:Connect(function()
-    BoostBtn.Text = "Đang dọn dẹp..."
-    task.wait(0.1)
-    
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Material = Enum.Material.SmoothPlastic
-        elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v:Destroy()
-        end
-    end
-    
-    game.Lighting.GlobalShadows = false
-    settings().Rendering.QualityLevel = 1
-    
-    BoostBtn.Text = "✅ Đã Tối Ưu"
-    BoostBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)
-end)
-
 task.spawn(StartupAnimation)
