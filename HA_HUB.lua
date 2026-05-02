@@ -5,7 +5,6 @@ local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
--- Các Remote của game (Tích hợp từ script cũ)
 local h = workspace.Interiors.Offices[tostring(p.UserId)].Items.Hardware
 local complete = RS.Remotes.Server.CompletePlayerCodingProgram
 local store = RS.Remotes.Server.Software.Store
@@ -16,7 +15,7 @@ local HubConfig = {
     AutoCollectPercent = false,
     AutoUpload = false,
     AutoSell = false,
-    SellTarget = 100, -- Mặc định
+    SellTarget = 100,
 }
 
 -- ==========================================
@@ -25,11 +24,9 @@ local HubConfig = {
 local gui = Instance.new("ScreenGui")
 gui.Name = "HA_HUB"
 gui.ResetOnSpawn = false
--- Thử đưa vào CoreGui để tránh bị game xóa, nếu lỗi thì đưa vào PlayerGui
 pcall(function() gui.Parent = CoreGui end)
 if not gui.Parent then gui.Parent = p:WaitForChild("PlayerGui") end
 
--- Hàm làm cho UI có thể kéo thả
 local function makeDraggable(guiObject)
     local dragging, dragInput, dragStart, startPos
     guiObject.InputBegan:Connect(function(input)
@@ -53,23 +50,18 @@ local function makeDraggable(guiObject)
     end)
 end
 
--- ==========================================
 -- BONG BÓNG UI (BUBBLE)
--- ==========================================
 local bubble = Instance.new("ImageButton", gui)
 bubble.Size = UDim2.new(0, 50, 0, 50)
 bubble.Position = UDim2.new(0.5, -25, 0.1, 0)
 bubble.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-bubble.Image = "rbxassetid://15555139045" -- THAY ID HÌNH ẢNH CỦA BẠN VÀO ĐÂY (Upload hình lên Roblox lấy ID)
+bubble.Image = "rbxassetid://15555139045" 
 bubble.Visible = false
 bubble.ClipsDescendants = true
-local bubbleCorner = Instance.new("UICorner", bubble)
-bubbleCorner.CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", bubble).CornerRadius = UDim.new(1, 0)
 makeDraggable(bubble)
 
--- ==========================================
 -- MAIN UI (BẢNG ĐIỀU KHIỂN)
--- ==========================================
 local mainFrame = Instance.new("Frame", gui)
 mainFrame.Size = UDim2.new(0, 300, 0, 350)
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
@@ -104,7 +96,6 @@ local layout = Instance.new("UIListLayout", container)
 layout.Padding = UDim.new(0, 10)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Hàm tạo công tắc (Toggle)
 local function createToggle(name, configKey)
     local frame = Instance.new("Frame", container)
     frame.Size = UDim2.new(1, 0, 0, 35)
@@ -142,7 +133,6 @@ local function createToggle(name, configKey)
     end)
 end
 
--- Hàm tạo thanh kéo (Slider)
 local function createSlider(name, min, max, configKey)
     local frame = Instance.new("Frame", container)
     frame.Size = UDim2.new(1, 0, 0, 55)
@@ -186,8 +176,7 @@ local function createSlider(name, min, max, configKey)
 
     trigger.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateSlider(input)
+            dragging = true; updateSlider(input)
         end
     end)
     UIS.InputEnded:Connect(function(input)
@@ -200,26 +189,20 @@ local function createSlider(name, min, max, configKey)
     end)
 end
 
--- Thêm các thành phần vào UI
 createToggle("Auto Collect %", "AutoCollectPercent")
 createToggle("Auto Click Code (</>)", "AutoClickCode")
 createToggle("Auto Upload (PC)", "AutoUpload")
 createToggle("Auto Sell Code", "AutoSell")
 createSlider("Sell When Reaching", 1, 1000, "SellTarget")
 
--- Tương tác ẩn/hiện UI
-closeBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-end)
-bubble.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
-end)
+closeBtn.MouseButton1Click:Connect(function() mainFrame.Visible = false end)
+bubble.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
 -- ==========================================
--- HIỆU ỨNG INTRO (KHỞI ĐỘNG)
+-- HIỆU ỨNG INTRO
 -- ==========================================
 local introFrame = Instance.new("Frame", gui)
-introFrame.Size = UDim2.new(0, 0, 0, 0) -- Bắt đầu từ 0
+introFrame.Size = UDim2.new(0, 0, 0, 0)
 introFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 introFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 introFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -255,14 +238,11 @@ loadTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 loadTxt.Font = Enum.Font.GothamSemibold
 loadTxt.TextSize = 14
 
--- Chạy Intro
 task.spawn(function()
-    -- Phóng to ra
     local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     TS:Create(introFrame, tweenInfo, {Size = UDim2.new(0, 300, 0, 150)}):Play()
     task.wait(1.2)
 
-    -- Chạy chữ HA HUB
     local textToType = "HA HUB"
     for i = 1, #textToType do
         introText.Text = string.sub(textToType, 1, i)
@@ -270,33 +250,43 @@ task.spawn(function()
     end
     task.wait(0.5)
 
-    -- Chạy thanh %
-    for i = 1, 100 do
+    for i = 1, 100, 2 do
         loadFill.Size = UDim2.new(i/100, 0, 1, 0)
         loadTxt.Text = "Loading... " .. i .. "%"
-        task.wait(0.02)
+        task.wait(0.01)
     end
-    task.wait(0.5)
+    task.wait(0.3)
 
-    -- Tắt intro, bật UI chính
     introFrame:Destroy()
     mainFrame.Visible = true
     bubble.Visible = true
 end)
 
-
 -- ==========================================
 -- LOGIC AUTO FARM KẾT HỢP VỚI CÔNG TẮC UI
 -- ==========================================
-local function forceClick(button)
-    if not button then return end
+
+-- Hàm mô phỏng click TỐI ƯU HÓA CHO MOBILE
+local function forceClick(btn)
+    if not btn then return end
     pcall(function()
+        -- Kích hoạt mặc định
+        btn:Activate()
+        
+        -- Dành cho Mobile Executors (Bắn TouchTap)
         if firesignal then
-            firesignal(button.MouseButton1Down)
-            firesignal(button.MouseButton1Click)
-            firesignal(button.Activated)
-        else
-            button:Activate() 
+            firesignal(btn.TouchTap)
+            firesignal(btn.MouseButton1Down)
+            firesignal(btn.MouseButton1Click)
+            firesignal(btn.MouseButton1Up)
+            firesignal(btn.Activated)
+        end
+        
+        -- Nếu executor dùng getconnections (Giả lập ngón tay chạm)
+        if getconnections then
+            for _, conn in pairs(getconnections(btn.TouchTap)) do conn:Fire() end
+            for _, conn in pairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+            for _, conn in pairs(getconnections(btn.Activated)) do conn:Fire() end
         end
     end)
 end
@@ -306,21 +296,41 @@ task.spawn(function()
         -- 1. AUTO COLLECT %
         if HubConfig.AutoCollectPercent then
             for _, v in pairs(p.PlayerGui:GetDescendants()) do
-                if v:IsA("TextButton") and v.Visible and v.Text:match("%%") then
-                    forceClick(v)
-                elseif v:IsA("TextLabel") and v.Text:match("%%") and (v.Parent:IsA("ImageButton") or v.Parent:IsA("TextButton")) then
-                    forceClick(v.Parent)
+                if v.Visible then
+                    local isPercent = false
+                    if v:IsA("TextButton") and v.Text:find("%%") then isPercent = true end
+                    if v:IsA("TextLabel") and v.Text:find("%%") then isPercent = true end
+                    
+                    if isPercent then
+                        local targetBtn = v:IsA("GuiButton") and v or v.Parent
+                        if targetBtn:IsA("GuiButton") then forceClick(targetBtn) end
+                    end
                 end
             end
         end
 
-        -- 2. AUTO CLICK CODE (</>)
+        -- 2. AUTO CLICK CODE (</>) - ĐÃ NÂNG CẤP NHẬN DIỆN
         if HubConfig.AutoClickCode then
             for _, v in pairs(p.PlayerGui:GetDescendants()) do
-                if v:IsA("ImageButton") and v.Visible and (v.Name:lower():match("code") or v.Name:lower():match("click") or v.Image:match("11562916684")) then
-                    forceClick(v)
+                if (v:IsA("ImageButton") or v:IsA("TextButton")) and v.Visible then
+                    
+                    -- Cách 1: Tìm theo ký hiệu </> bên trong nút
+                    local hasCodeSymbol = false
+                    if v:IsA("TextButton") and v.Text:find("</>") then hasCodeSymbol = true end
+                    for _, child in ipairs(v:GetChildren()) do
+                        if child:IsA("TextLabel") and child.Text:find("</>") then hasCodeSymbol = true end
+                    end
+
+                    -- Cách 2: Tìm theo tên của nút
+                    local matchName = v.Name:lower():match("code") or v.Name:lower():match("click") or v.Name:lower():match("action")
+
+                    -- Kích hoạt nếu thỏa mãn
+                    if hasCodeSymbol or matchName or (v:IsA("ImageButton") and v.Image:match("11562916684")) then
+                        forceClick(v)
+                    end
                 end
             end
+            -- Đẩy kèm remote lên server dự phòng
             pcall(function() complete:InvokeServer(complete) end)
         end
 
@@ -337,17 +347,10 @@ task.spawn(function()
         -- 4. AUTO SELL (Cần tùy chỉnh lại Remote và Leaderstats)
         if HubConfig.AutoSell then
             pcall(function()
-                -- [LƯU Ý]: Chỗ này bạn cần thay đổi theo đúng game của bạn!
-                -- Giả sử số lượng Code lưu ở: game.Players.LocalPlayer.leaderstats.Code.Value
-                -- Giả sử Remote bán là: RS.Remotes.Server.SellCode
-                
+                -- Thay đổi đường dẫn này theo game của bạn
                 local currentCodes = 0 
-                -- Ví dụ: currentCodes = p.leaderstats.Code.Value 
-                
                 if currentCodes >= HubConfig.SellTarget then
-                    -- Thực hiện lệnh bán
-                    -- Ví dụ: RS.Remotes.Server.SellCode:InvokeServer()
-                    -- print("Đã bán " .. currentCodes .. " codes!")
+                    -- Lệnh bán
                 end
             end)
         end
