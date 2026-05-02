@@ -4,6 +4,7 @@ local p = game.Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local VIM = game:GetService("VirtualInputManager") -- Bổ sung công cụ chạm vật lý
 
 local h = workspace.Interiors.Offices[tostring(p.UserId)].Items.Hardware
 local complete = RS.Remotes.Server.CompletePlayerCodingProgram
@@ -123,13 +124,8 @@ local function createToggle(name, configKey)
 
     btn.MouseButton1Click:Connect(function()
         HubConfig[configKey] = not HubConfig[configKey]
-        if HubConfig[configKey] then
-            btn.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
-            btn.Text = "ON"
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-            btn.Text = "OFF"
-        end
+        btn.BackgroundColor3 = HubConfig[configKey] and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+        btn.Text = HubConfig[configKey] and "ON" or "OFF"
     end)
 end
 
@@ -183,9 +179,7 @@ local function createSlider(name, min, max, configKey)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
     UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateSlider(input)
-        end
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider(input) end
     end)
 end
 
@@ -239,102 +233,80 @@ loadTxt.Font = Enum.Font.GothamSemibold
 loadTxt.TextSize = 14
 
 task.spawn(function()
-    local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    TS:Create(introFrame, tweenInfo, {Size = UDim2.new(0, 300, 0, 150)}):Play()
+    TS:Create(introFrame, TweenInfo.new(1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 150)}):Play()
     task.wait(1.2)
-
     local textToType = "HA HUB"
-    for i = 1, #textToType do
-        introText.Text = string.sub(textToType, 1, i)
-        task.wait(0.15)
-    end
+    for i = 1, #textToType do introText.Text = string.sub(textToType, 1, i) task.wait(0.15) end
     task.wait(0.5)
-
-    for i = 1, 100, 2 do
-        loadFill.Size = UDim2.new(i/100, 0, 1, 0)
-        loadTxt.Text = "Loading... " .. i .. "%"
-        task.wait(0.01)
-    end
+    for i = 1, 100, 2 do loadFill.Size = UDim2.new(i/100, 0, 1, 0) loadTxt.Text = "Loading... "..i.."%" task.wait(0.01) end
     task.wait(0.3)
-
     introFrame:Destroy()
     mainFrame.Visible = true
     bubble.Visible = true
 end)
 
 -- ==========================================
--- LOGIC AUTO FARM KẾT HỢP VỚI CÔNG TẮC UI
+-- LOGIC AUTO FARM: GIẢ LẬP NHẤN ĐÈ VẬT LÝ
 -- ==========================================
-
--- Hàm mô phỏng click TỐI ƯU HÓA CHO MOBILE
-local function forceClick(btn)
-    if not btn then return end
+local function forceHoldAndClick(v)
     pcall(function()
-        -- Kích hoạt mặc định
-        btn:Activate()
-        
-        -- Dành cho Mobile Executors (Bắn TouchTap)
-        if firesignal then
-            firesignal(btn.TouchTap)
-            firesignal(btn.MouseButton1Down)
-            firesignal(btn.MouseButton1Click)
-            firesignal(btn.MouseButton1Up)
-            firesignal(btn.Activated)
-        end
-        
-        -- Nếu executor dùng getconnections (Giả lập ngón tay chạm)
+        -- 1. Phát tín hiệu "Bắt đầu chạm" (InputBegan) thay vì Click thông thường
+        local mockTouch = {UserInputType = Enum.UserInputType.Touch, UserInputState = Enum.UserInputState.Begin}
+        if firesignal then firesignal(v.InputBegan, mockTouch) end
         if getconnections then
-            for _, conn in pairs(getconnections(btn.TouchTap)) do conn:Fire() end
-            for _, conn in pairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
-            for _, conn in pairs(getconnections(btn.Activated)) do conn:Fire() end
+            for _, c in pairs(getconnections(v.InputBegan)) do c:Fire(mockTouch) end
         end
+        
+        -- 2. Đòn chí mạng: Dùng VIM chạm vật lý vào tọa độ của nút trên màn hình
+        local cx = v.AbsolutePosition.X + (v.AbsoluteSize.X / 2)
+        local cy = v.AbsolutePosition.Y + (v.AbsoluteSize.Y / 2) + 36 -- Cộng thêm 36px bù trừ cho thanh bar phía trên của đt
+        VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 1) -- Đè nút xuống
+        task.wait(0.1) -- Giữ trong 0.1 giây để tăng thanh %
+        VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1) -- Thả ra
     end)
 end
 
 task.spawn(function()
     while true do
-        -- 1. AUTO COLLECT %
+        local viewport = workspace.CurrentCamera.ViewportSize
+
+        -- 1. AUTO COLLECT BONG BÓNG %
         if HubConfig.AutoCollectPercent then
-            for _, v in pairs(p.PlayerGui:GetDescendants()) do
-                if v.Visible then
-                    local isPercent = false
-                    if v:IsA("TextButton") and v.Text:find("%%") then isPercent = true end
-                    if v:IsA("TextLabel") and v.Text:find("%%") then isPercent = true end
-                    
-                    if isPercent then
-                        local targetBtn = v:IsA("GuiButton") and v or v.Parent
-                        if targetBtn:IsA("GuiButton") then forceClick(targetBtn) end
+            for _, gui in pairs(p.PlayerGui:GetChildren()) do
+                if gui.Name ~= "HA_HUB" and gui.Name ~= "TouchGui" then
+                    for _, v in pairs(gui:GetDescendants()) do
+                        if v.Visible and (v:IsA("TextButton") or v:IsA("TextLabel")) and v.Text:find("%%") then
+                            local target = v:IsA("GuiButton") and v or v.Parent
+                            if target:IsA("GuiButton") then forceHoldAndClick(target) end
+                        end
                     end
                 end
             end
         end
 
-        -- 2. AUTO CLICK CODE (</>) - ĐÃ NÂNG CẤP NHẬN DIỆN
+        -- 2. AUTO CLICK CODE (QUÉT THEO TỌA ĐỘ VÀ GIẢ LẬP GIỮ)
         if HubConfig.AutoClickCode then
-            for _, v in pairs(p.PlayerGui:GetDescendants()) do
-                if (v:IsA("ImageButton") or v:IsA("TextButton")) and v.Visible then
-                    
-                    -- Cách 1: Tìm theo ký hiệu </> bên trong nút
-                    local hasCodeSymbol = false
-                    if v:IsA("TextButton") and v.Text:find("</>") then hasCodeSymbol = true end
-                    for _, child in ipairs(v:GetChildren()) do
-                        if child:IsA("TextLabel") and child.Text:find("</>") then hasCodeSymbol = true end
-                    end
-
-                    -- Cách 2: Tìm theo tên của nút
-                    local matchName = v.Name:lower():match("code") or v.Name:lower():match("click") or v.Name:lower():match("action")
-
-                    -- Kích hoạt nếu thỏa mãn
-                    if hasCodeSymbol or matchName or (v:IsA("ImageButton") and v.Image:match("11562916684")) then
-                        forceClick(v)
+            for _, gui in pairs(p.PlayerGui:GetChildren()) do
+                -- Bỏ qua UI của Hub và cụm di chuyển của game
+                if gui.Name ~= "HA_HUB" and gui.Name ~= "TouchGui" then 
+                    for _, v in pairs(gui:GetDescendants()) do
+                        -- Nếu là nút bấm, đang hiển thị, và không quá bé
+                        if v:IsA("GuiButton") and v.Visible and v.AbsoluteSize.X > 30 then
+                            local pos = v.AbsolutePosition
+                            -- KHOANH VÙNG: Bất kỳ nút nào nằm ở góc dưới - phải (vị trí của nút </>)
+                            if pos.X > viewport.X * 0.7 and pos.Y > viewport.Y * 0.4 then
+                                -- Tự động đè nó
+                                forceHoldAndClick(v)
+                            end
+                        end
                     end
                 end
             end
-            -- Đẩy kèm remote lên server dự phòng
+            -- Bắn lệnh dự phòng để gửi tiền về
             pcall(function() complete:InvokeServer(complete) end)
         end
 
-        -- 3. AUTO UPLOAD
+        -- 3. AUTO UPLOAD (PC)
         if HubConfig.AutoUpload then
             for _, v in ipairs(h:GetDescendants()) do
                 if v.Name == "Pc" and v:IsA("Model") then
@@ -344,13 +316,12 @@ task.spawn(function()
             end
         end
 
-        -- 4. AUTO SELL (Cần tùy chỉnh lại Remote và Leaderstats)
+        -- 4. AUTO SELL
         if HubConfig.AutoSell then
             pcall(function()
-                -- Thay đổi đường dẫn này theo game của bạn
                 local currentCodes = 0 
                 if currentCodes >= HubConfig.SellTarget then
-                    -- Lệnh bán
+                    -- Thực hiện lệnh bán
                 end
             end)
         end
